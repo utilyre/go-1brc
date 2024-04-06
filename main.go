@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -25,16 +26,14 @@ func main() {
 	}(time.Now())
 
 	chunkc := produceChunks()
-	stationMapc := Merge([]<-chan map[string]Station{
-		produceStationMaps(chunkc),
-		produceStationMaps(chunkc),
-		produceStationMaps(chunkc),
-		produceStationMaps(chunkc),
-		produceStationMaps(chunkc),
-	})
+
+	stationcs := make([]<-chan map[string]Station, runtime.NumCPU())
+	for i := range runtime.NumCPU() {
+		stationcs[i] = produceStationMaps(chunkc)
+	}
+	stationMapc := Merge(stationcs)
 
 	stationMap := make(map[string]Station)
-
 	for m := range stationMapc {
 		for name, station := range m {
 			s, _ := stationMap[name]
