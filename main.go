@@ -3,10 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
-	"io"
-	"log"
 	"os"
 	"sort"
 	"strconv"
@@ -34,11 +31,7 @@ func produceChunks() <-chan []byte {
 		for {
 			n, err := os.Stdin.Read(buf)
 			if err != nil {
-				if errors.Is(err, io.EOF) {
-					return
-				}
-
-				log.Fatal(err)
+				return
 			}
 
 			idx := bytes.LastIndexByte(buf[:n], byte('\n'))
@@ -52,7 +45,7 @@ func produceChunks() <-chan []byte {
 	return chunkc
 }
 
-func produceStationMap(chunkc <-chan []byte) <-chan map[string]Station {
+func produceStationMaps(chunkc <-chan []byte) <-chan map[string]Station {
 	stationMapc := make(chan map[string]Station)
 
 	go func() {
@@ -83,7 +76,7 @@ func produceStationMap(chunkc <-chan []byte) <-chan map[string]Station {
 	return stationMapc
 }
 
-func Merge[T any](cs ...<-chan T) <-chan T {
+func Merge[T any](cs []<-chan T) <-chan T {
 	mergedc := make(chan T)
 
 	var wg sync.WaitGroup
@@ -113,13 +106,13 @@ func main() {
 	}(time.Now())
 
 	chunkc := produceChunks()
-	stationMapc := Merge(
-		produceStationMap(chunkc),
-		produceStationMap(chunkc),
-		produceStationMap(chunkc),
-		produceStationMap(chunkc),
-		produceStationMap(chunkc),
-	)
+	stationMapc := Merge([]<-chan map[string]Station{
+		produceStationMaps(chunkc),
+		produceStationMaps(chunkc),
+		produceStationMaps(chunkc),
+		produceStationMaps(chunkc),
+		produceStationMaps(chunkc),
+	})
 
 	stationMap := make(map[string]Station)
 
@@ -142,7 +135,6 @@ func main() {
 	}
 	sort.Strings(names)
 
-	fmt.Println(len(stationMap))
 	for _, name := range names {
 		s := stationMap[name]
 		fmt.Printf("%s=%.01f/%.01f/%.01f\n", name, s.min, s.avg, s.max)
