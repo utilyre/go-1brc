@@ -47,9 +47,11 @@ func main() {
 		}
 	}
 
-	names := make([]string, 0, len(stationMap))
+	idx := 0
+	names := make([]string, len(stationMap))
 	for name := range stationMap {
-		names = append(names, name)
+		names[idx] = name
+		idx++
 	}
 	sort.Strings(names)
 
